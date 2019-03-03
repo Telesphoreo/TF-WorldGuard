@@ -43,10 +43,7 @@ public class RegionPermissionModel extends AbstractPermissionModel {
     }
 
     public boolean mayIgnoreRegionProtection(ProtectedRegion region) {
-        if (region.isOwner((LocalPlayer) getSender()) || region.isMember((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender())) {
-            return true;
-        }
-        return false;
+        return region.isOwner((LocalPlayer) getSender()) || region.isMember((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean mayForceLoadRegions() {
