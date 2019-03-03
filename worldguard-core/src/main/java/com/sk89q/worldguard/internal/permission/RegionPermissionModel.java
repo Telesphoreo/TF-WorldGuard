@@ -25,7 +25,6 @@ import com.sk89q.worldedit.world.World;
 import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-import me.totalfreedom.worldguard.WorldGuardHandler;
 
 import javax.annotation.Nullable;
 
@@ -39,83 +38,73 @@ public class RegionPermissionModel extends AbstractPermissionModel {
     }
 
     public boolean mayIgnoreRegionProtection(World world) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
-    }
-
-    public boolean mayIgnoreRegionProtection(ProtectedRegion region) {
-        if (region.isOwner((LocalPlayer) getSender()) || region.isMember((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender()))
-        {
-            return true;
-        }
-        return false;
+        return hasPluginPermission("region.bypass." + world.getName());
     }
     
     public boolean mayForceLoadRegions() {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPluginPermission("region.load");
     }
     
     public boolean mayForceSaveRegions() {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPluginPermission("region.save");
     }
 
     public boolean mayMigrateRegionStore() {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPluginPermission("region.migratedb");
     }
 
     public boolean mayMigrateRegionNames() {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPluginPermission("region.migrateuuid");
     }
     
     public boolean mayDefine() {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPluginPermission("region.define");
     }
     
     public boolean mayRedefine(ProtectedRegion region) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission("redefine", region);
     }
     
     public boolean mayClaim() {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPluginPermission("region.claim");
     }
     
     public boolean mayClaimRegionsUnbounded() {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPluginPermission("region.unlimited");
     }
     
     public boolean mayDelete(ProtectedRegion region) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission("remove", region);
     }
     
     public boolean maySetPriority(ProtectedRegion region) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission("setpriority", region);
     }
     
     public boolean maySetParent(ProtectedRegion child, ProtectedRegion parent) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission("setparent", child) &&
+                (parent == null ||
+                hasPatternPermission("setparent", parent));
     }
     
     public boolean maySelect(ProtectedRegion region) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission("select", region);
     }
     
     public boolean mayLookup(ProtectedRegion region) {
-        return true;
+        return hasPatternPermission("info", region);
     }
     
     public boolean mayTeleportTo(ProtectedRegion region) {
-        return true;
+        return hasPatternPermission("teleport", region);
     }
 
     public boolean mayOverrideLocationFlagBounds(ProtectedRegion region) {
-        if (region.isOwner((LocalPlayer) getSender()) || region.isMember((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender()))
-        {
-            return true;
-        }
-        return false;
+        return hasPatternPermission("locationoverride", region);
     }
     
     public boolean mayList() {
-        return true;
+        return hasPluginPermission("region.list");
     }
     
     public boolean mayList(String targetPlayer) {
@@ -124,19 +113,20 @@ public class RegionPermissionModel extends AbstractPermissionModel {
         }
         
         if (targetPlayer.equalsIgnoreCase(getSender().getName())) {
-            return true;
+            return hasPluginPermission("region.list.own");
         } else {
             return mayList();
         }
     }
     
     public boolean maySetFlag(ProtectedRegion region) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission("flag.regions", region);
     }
 
     public boolean maySetFlag(ProtectedRegion region, Flag<?> flag) {
         // This is a WTF permission
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission(
+                "flag.flags." + flag.getName().toLowerCase(), region);
     }
 
     public boolean maySetFlag(ProtectedRegion region, Flag<?> flag, @Nullable String value) {
@@ -152,31 +142,24 @@ public class RegionPermissionModel extends AbstractPermissionModel {
         }
 
         // This is a WTF permission
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission(
+                "flag.flags." + flag.getName().toLowerCase() + "." + sanitizedValue, region);
     }
 
     public boolean mayAddMembers(ProtectedRegion region) {
-        if (region.isOwner((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender()))
-        {
-            return true;
-        }
-        return false;
+        return hasPatternPermission("addmember", region);
     }
 
     public boolean mayAddOwners(ProtectedRegion region) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission("addowner", region);
     }
 
     public boolean mayRemoveMembers(ProtectedRegion region) {
-        if (region.isOwner((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender()))
-        {
-            return true;
-        }
-        return false;
+        return hasPatternPermission("removemember", region);
     }
 
     public boolean mayRemoveOwners(ProtectedRegion region) {
-        return WorldGuardHandler.isAdmin((Player) getSender());
+        return hasPatternPermission("removeowner", region);
     }
     
     /**
@@ -194,12 +177,16 @@ public class RegionPermissionModel extends AbstractPermissionModel {
         String idLower = region.getId().toLowerCase();
         String effectivePerm;
         
-        if (region.isOwner((LocalPlayer) getSender()) || region.isMember((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender()))
-        {
-            return true;
+        if (region.isOwner((LocalPlayer) getSender())) {
+            return hasPluginPermission("region." + perm + ".own." + idLower) ||
+                    hasPluginPermission("region." + perm + ".member." + idLower);
+        } else if (region.isMember((LocalPlayer) getSender())) {
+            return hasPluginPermission("region." + perm + ".member." + idLower);
+        } else {
+            effectivePerm = "region." + perm + "." + idLower;
         }
 
-        return false;
+        return hasPluginPermission(effectivePerm);
     }
 
 }

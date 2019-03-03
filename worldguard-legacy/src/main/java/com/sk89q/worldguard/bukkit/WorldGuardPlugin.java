@@ -65,10 +65,8 @@ import com.sk89q.worldguard.bukkit.util.Events;
 import com.sk89q.worldguard.bukkit.util.logging.ClassSourceValidator;
 import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.flags.registry.SimpleFlagRegistry;
-import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.util.logging.RecordMessagePrefixer;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -247,14 +245,6 @@ public class WorldGuardPlugin extends JavaPlugin {
         }
 
         return true;
-    }
-
-    // Get region manager for a world
-    public RegionManager getRegionManager(World world)
-    {
-        RegionContainer regionContainer = platform.getRegionContainer();
-        RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world));
-        return regionManager;
     }
 
     /**
