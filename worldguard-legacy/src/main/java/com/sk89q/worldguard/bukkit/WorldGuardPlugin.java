@@ -256,8 +256,7 @@ public class WorldGuardPlugin extends JavaPlugin {
      * @param world
      * @return
      */
-    public RegionManager getRegionManager(World world)
-    {
+    public RegionManager getRegionManager(World world) {
         RegionContainer regionContainer = platform.getRegionContainer();
         RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world));
         return regionManager;
