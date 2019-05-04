@@ -37,8 +37,12 @@ import com.sk89q.worldedit.util.Location;
 import com.sk89q.worldedit.util.formatting.component.ErrorFormat;
 import com.sk89q.worldedit.util.formatting.component.LabelFormat;
 import com.sk89q.worldedit.util.formatting.component.SubtleFormat;
+import com.sk89q.worldedit.util.formatting.text.Component;
 import com.sk89q.worldedit.util.formatting.text.TextComponent;
+import com.sk89q.worldedit.util.formatting.text.event.ClickEvent;
+import com.sk89q.worldedit.util.formatting.text.event.HoverEvent;
 import com.sk89q.worldedit.util.formatting.text.format.TextColor;
+import com.sk89q.worldedit.util.formatting.text.format.TextDecoration;
 import com.sk89q.worldedit.world.World;
 import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.WorldGuard;
@@ -267,7 +271,7 @@ public final class RegionCommands extends RegionCommandsBase {
 
         if (wcfg.maxClaimVolume >= Integer.MAX_VALUE) {
             throw new CommandException("The maximum claim volume get in the configuration is higher than is supported. " +
-                    "Currently, it must be " + Integer.MAX_VALUE+ " or smaller. Please contact a server administrator.");
+                    "Currently, it must be " + Integer.MAX_VALUE + " or smaller. Please contact a server administrator.");
         }
 
         // Check claim volume
@@ -377,7 +381,8 @@ public final class RegionCommands extends RegionCommandsBase {
         }
 
         // Print region information
-        RegionPrintoutBuilder printout = new RegionPrintoutBuilder(existing, args.hasFlag('u') ? null : WorldGuard.getInstance().getProfileCache());
+        RegionPrintoutBuilder printout = new RegionPrintoutBuilder(world.getName(), existing,
+                args.hasFlag('u') ? null : WorldGuard.getInstance().getProfileCache(), sender);
         ListenableFuture<?> future = Futures.transform(
                 WorldGuard.getInstance().getExecutorService().submit(printout),
                 CommandUtils.messageComponentFunction(sender)::apply);
@@ -413,9 +418,9 @@ public final class RegionCommands extends RegionCommandsBase {
         String ownedBy;
 
         // Get page
-        int page = args.getInteger(0, 1) - 1;
-        if (page < 0) {
-            page = 0;
+        int page = args.getInteger(0, 1);
+        if (page < 1) {
+            page = 1;
         }
 
         // -p flag to lookup a player's regions
@@ -435,7 +440,7 @@ public final class RegionCommands extends RegionCommandsBase {
 
         RegionManager manager = checkRegionManager(world);
 
-        RegionLister task = new RegionLister(manager, sender);
+        RegionLister task = new RegionLister(manager, sender, world.getName());
         task.setPage(page);
         if (ownedBy != null) {
             task.filterOwnedByName(ownedBy, args.hasFlag('n'));
@@ -512,21 +517,55 @@ public final class RegionCommands extends RegionCommandsBase {
 
             Collections.sort(flagList);
 
-            StringBuilder list = new StringBuilder();
+            // TODO paginationbox + descs etc
 
+            final TextComponent.Builder builder = TextComponent.builder("Available flags: ");
+
+            final HoverEvent clickToSet = new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.of("Click to set"));
             for (int i = 0; i < flagList.size(); i++) {
                 String flag = flagList.get(i);
 
-                list.append(TextComponent.of(flag, i % 2 == 0 ? TextColor.GRAY : TextColor.WHITE));
-                if ((i + 1) < flagList.size()) {
-                    list.append(", ");
+                builder.append(TextComponent.of(flag, i % 2 == 0 ? TextColor.GRAY : TextColor.WHITE)
+                        .hoverEvent(clickToSet).clickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,
+                                "/rg flag -w " + world.getName() + " " + existing.getId() + " " + flag + " ")));
+                if (i < flagList.size() + 1) {
+                    builder.append(TextComponent.of(", "));
                 }
             }
 
             sender.printError("Unknown flag specified: " + flagName);
-            sender.print("Available flags: " + list);
+            sender.print(builder.build());
             
             return;
+        } else {
+            if (foundFlag == Flags.BUILD || foundFlag == Flags.BLOCK_BREAK || foundFlag == Flags.BLOCK_PLACE) {
+                sender.print(Component.empty().append(TextComponent.of("WARNING:", TextColor.RED).decoration(TextDecoration.BOLD, true))
+                        .append(ErrorFormat.wrap(" Setting the " + foundFlag.getName() + " flag is not required for protection."))
+                        .append(Component.newline())
+                        .append(TextComponent.of("Setting this flag will completely override default protection, and apply" +
+                                " to members, non-members, pistons, and everything else that can modify blocks."))
+                        .append(Component.newline())
+                        .append(TextComponent.of("Only set this flag if you are sure you know what you are doing. See ")
+                        .append(TextComponent.of("[this documentation page]", TextColor.AQUA)
+                                .clickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL,
+                                        "https://worldguard.readthedocs.io/en/latest/regions/flags/#protection-related")))
+                        .append(TextComponent.of(" for more info."))));
+                if (!sender.isPlayer()) {
+                    sender.printRaw("https://worldguard.readthedocs.io/en/latest/regions/flags/#protection-related");
+                }
+            } else if (foundFlag == Flags.PASSTHROUGH) {
+                sender.print(Component.empty().append(TextComponent.of("WARNING:", TextColor.RED).decoration(TextDecoration.BOLD, true))
+                        .append(ErrorFormat.wrap(" This flag is unrelated to moving through regions."))
+                        .append(Component.newline())
+                        .append(TextComponent.of("It overrides build checks. If you're unsure what this means, see ")
+                        .append(TextComponent.of("[this documentation page]", TextColor.AQUA)
+                                .clickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL,
+                                        "https://worldguard.readthedocs.io/en/latest/regions/flags/#overrides")))
+                        .append(TextComponent.of(" for more info."))));
+                if (!sender.isPlayer()) {
+                    sender.printRaw("https://worldguard.readthedocs.io/en/latest/regions/flags/#overrides");
+                }
+            }
         }
         
         // Also make sure that we can use this flag
@@ -596,7 +635,7 @@ public final class RegionCommands extends RegionCommandsBase {
         }
 
         // Print region information
-        RegionPrintoutBuilder printout = new RegionPrintoutBuilder(existing, null);
+        RegionPrintoutBuilder printout = new RegionPrintoutBuilder(world.getName(), existing, null, sender);
         printout.append(SubtleFormat.wrap("(Current flags: "));
         printout.appendFlagsList(false);
         printout.append(SubtleFormat.wrap(")"));
@@ -674,7 +713,7 @@ public final class RegionCommands extends RegionCommandsBase {
             child.setParent(parent);
         } catch (CircularInheritanceException e) {
             // Tell the user what's wrong
-            RegionPrintoutBuilder printout = new RegionPrintoutBuilder(parent, null);
+            RegionPrintoutBuilder printout = new RegionPrintoutBuilder(world.getName(), parent, null, sender);
             assert parent != null;
             printout.append(ErrorFormat.wrap("Uh oh! Setting '", parent.getId(), "' to be the parent of '", child.getId(),
                     "' would cause circular inheritance.")).newline();
@@ -686,12 +725,15 @@ public final class RegionCommands extends RegionCommandsBase {
         }
         
         // Tell the user the current inheritance
-        RegionPrintoutBuilder printout = new RegionPrintoutBuilder(child, null);
-        printout.append(LabelFormat.wrap("Inheritance set for region '", child.getId(), "'.")).newline();
+        RegionPrintoutBuilder printout = new RegionPrintoutBuilder(world.getName(), child, null, sender);
+        printout.append(LabelFormat.wrap("Inheritance set for region '", child.getId(), "'."));
         if (parent != null) {
+            printout.newline();
             printout.append(SubtleFormat.wrap("(Current inheritance:")).newline();
             printout.appendParentTree(true);
             printout.append(SubtleFormat.wrap(")"));
+        } else {
+            printout.append(LabelFormat.wrap(" Region is now orphaned."));
         }
         printout.send(sender);
     }
@@ -992,7 +1034,7 @@ public final class RegionCommands extends RegionCommandsBase {
      */
     @Command(aliases = {"teleport", "tp"},
              usage = "<id>",
-             flags = "s",
+             flags = "sw:",
              desc = "Teleports you to the location associated with the region.",
              min = 1, max = 1)
     public void teleport(CommandContext args, Actor sender) throws CommandException {
@@ -1000,7 +1042,8 @@ public final class RegionCommands extends RegionCommandsBase {
         Location teleportLocation;
 
         // Lookup the existing region
-        RegionManager regionManager = checkRegionManager(player.getWorld());
+        World world = checkWorld(args, player, 'w');
+        RegionManager regionManager = checkRegionManager(world);
         ProtectedRegion existing = checkExistingRegion(regionManager, args.getString(0), false);
 
         // Check permissions
