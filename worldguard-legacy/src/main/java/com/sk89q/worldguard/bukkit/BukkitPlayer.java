@@ -20,7 +20,6 @@
 package com.sk89q.worldguard.bukkit;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import com.sk89q.worldedit.util.Location;
 import com.sk89q.worldedit.world.weather.WeatherType;
 import com.sk89q.worldedit.world.weather.WeatherTypes;
@@ -167,6 +166,11 @@ public class BukkitPlayer extends com.sk89q.worldedit.bukkit.BukkitPlayer implem
     @Override
     public void setCompassTarget(Location location) {
         getPlayer().setCompassTarget(BukkitAdapter.adapt(location));
+    }
+
+    @Override
+    public void sendTitle(String title, String subtitle) {
+        getPlayer().sendTitle(title, subtitle, -1, -1, -1);
     }
 
     @Override
