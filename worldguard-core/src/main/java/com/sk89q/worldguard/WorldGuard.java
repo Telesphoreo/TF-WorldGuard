@@ -33,12 +33,10 @@ import com.sk89q.squirrelid.resolver.CacheForwardingService;
 import com.sk89q.squirrelid.resolver.CombinedProfileService;
 import com.sk89q.squirrelid.resolver.HttpRepositoryService;
 import com.sk89q.squirrelid.resolver.ProfileService;
-import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.extension.platform.Actor;
 import com.sk89q.worldedit.util.task.SimpleSupervisor;
 import com.sk89q.worldedit.util.task.Supervisor;
 import com.sk89q.worldedit.util.task.Task;
-import com.sk89q.worldedit.world.World;
 import com.sk89q.worldguard.internal.platform.WorldGuardPlatform;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
@@ -54,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class WorldGuard {
+public final class WorldGuard {
 
     public static final Logger logger = Logger.getLogger(WorldGuard.class.getCanonicalName());
 
@@ -67,7 +65,7 @@ public class WorldGuard {
     private ProfileCache profileCache;
     private ProfileService profileService;
     private ListeningExecutorService executorService;
-    private WorldGuardExceptionConverter exceptionConverter = new WorldGuardExceptionConverter(this);
+    private WorldGuardExceptionConverter exceptionConverter = new WorldGuardExceptionConverter();
 
     static {
         Flags.registerAll();
@@ -89,7 +87,7 @@ public class WorldGuard {
         try {
             profileCache = new SQLiteCache(new File(cacheDir, "profiles.sqlite"));
         } catch (IOException e) {
-            WorldGuard.logger.log(Level.WARNING, "Failed to initialize SQLite profile cache");
+            logger.log(Level.WARNING, "Failed to initialize SQLite profile cache");
             profileCache = new HashMapCache();
         }
 
@@ -194,7 +192,7 @@ public class WorldGuard {
         executorService.shutdown();
 
         try {
-            WorldGuard.logger.log(Level.INFO, "Shutting down executor and waiting for any pending tasks...");
+            logger.log(Level.INFO, "Shutting down executor and cancelling any pending tasks...");
 
             List<Task<?>> tasks = supervisor.getTasks();
             if (!tasks.isEmpty()) {
@@ -202,16 +200,15 @@ public class WorldGuard {
                 for (Task<?> task : tasks) {
                     builder.append("\n");
                     builder.append(task.getName());
+                    task.cancel(true);
                 }
-                WorldGuard.logger.log(Level.INFO, builder.toString());
+                logger.log(Level.INFO, builder.toString());
             }
 
-            Futures.successfulAsList(tasks).get();
-            executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+            //Futures.successfulAsList(tasks).get();
+            executorService.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        } catch (ExecutionException e) {
-            WorldGuard.logger.log(Level.WARNING, "Some tasks failed while waiting for remaining tasks to finish", e);
         }
 
         platform.unload();
