@@ -45,6 +45,7 @@ import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockFadeEvent;
 import org.bukkit.event.block.BlockFormEvent;
 import org.bukkit.event.block.BlockFromToEvent;
+import org.bukkit.event.block.BlockGrowEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockIgniteEvent.IgniteCause;
 import org.bukkit.event.block.BlockPhysicsEvent;
@@ -563,9 +564,9 @@ public class WorldGuardBlockListener implements Listener {
             return;
         }
 
-        Material fromType = event.getSource().getType();
+        Material newType = event.getNewState().getType(); // craftbukkit randomly gives AIR as event.getSource even if that block is not air
 
-        if (Materials.isMushroom(fromType)) {
+        if (Materials.isMushroom(newType)) {
             if (wcfg.disableMushroomSpread) {
                 event.setCancelled(true);
                 return;
@@ -577,7 +578,7 @@ public class WorldGuardBlockListener implements Listener {
             }
         }
 
-        if (fromType == Material.GRASS_BLOCK) {
+        if (newType == Material.GRASS_BLOCK) {
             if (wcfg.disableGrassGrowth) {
                 event.setCancelled(true);
                 return;
@@ -589,7 +590,7 @@ public class WorldGuardBlockListener implements Listener {
             }
         }
 
-        if (fromType == Material.MYCELIUM) {
+        if (newType == Material.MYCELIUM) {
             if (wcfg.disableMyceliumSpread) {
                 event.setCancelled(true);
                 return;
@@ -602,7 +603,7 @@ public class WorldGuardBlockListener implements Listener {
             }
         }
 
-        if (fromType == Material.VINE || fromType == Material.KELP) {
+        if (newType == Material.VINE || newType == Material.KELP) {
             if (wcfg.disableVineGrowth) {
                 event.setCancelled(true);
                 return;
@@ -610,6 +611,25 @@ public class WorldGuardBlockListener implements Listener {
 
             if (wcfg.useRegions && !StateFlag.test(WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery()
                     .queryState(BukkitAdapter.adapt(event.getBlock().getLocation()), (RegionAssociable) null, Flags.VINE_GROWTH))) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBlockGrow(BlockGrowEvent event) {
+        WorldConfiguration wcfg = getWorldConfig(event.getBlock().getWorld());
+        final Material type = event.getBlock().getType();
+
+        if (Materials.isCrop(type)) {
+            if (wcfg.disableCropGrowth) {
+                event.setCancelled(false);
+                return;
+            }
+
+            if (wcfg.useRegions && !StateFlag.test(WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery()
+                .queryState(BukkitAdapter.adapt(event.getBlock().getLocation()), (RegionAssociable) null, Flags.CROP_GROWTH))) {
                 event.setCancelled(true);
                 return;
             }

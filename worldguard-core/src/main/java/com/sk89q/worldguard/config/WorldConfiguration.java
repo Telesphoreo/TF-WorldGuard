@@ -53,7 +53,6 @@ public abstract class WorldConfiguration {
             "# Remove the {} and add your own entries.\r\n" +
             "#\r\n";
 
-    @Unreported private String worldName;
     protected File blacklistFile;
 
     @Unreported protected Blacklist blacklist;
@@ -146,6 +145,7 @@ public abstract class WorldConfiguration {
     public boolean disableGrassGrowth;
     public boolean disableMyceliumSpread;
     public boolean disableVineGrowth;
+    public boolean disableCropGrowth;
     public boolean disableEndermanGriefing;
     public boolean disableSnowmanTrails;
     public boolean disableSoilDehydration;
@@ -168,10 +168,6 @@ public abstract class WorldConfiguration {
 
     public Blacklist getBlacklist() {
         return this.blacklist;
-    }
-
-    public String getWorldName() {
-        return this.worldName;
     }
 
     public List<String> convertLegacyItems(List<String> legacyItems) {

@@ -244,6 +244,7 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
         disableGrassGrowth = getBoolean("dynamics.disable-grass-growth", false);
         disableMyceliumSpread = getBoolean("dynamics.disable-mycelium-spread", false);
         disableVineGrowth = getBoolean("dynamics.disable-vine-growth", false);
+        disableCropGrowth = getBoolean("dynamics.disable-crop-growth", false);
         disableSoilDehydration = getBoolean("dynamics.disable-soil-dehydration", false);
         allowedSnowFallOver = new HashSet<>(convertLegacyBlocks(getStringList("dynamics.snow-fall-blocks", null)));
 
@@ -379,16 +380,6 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
         config.setHeader(CONFIG_HEADER);
 
         config.save();
-    }
-
-    @Override
-    public Blacklist getBlacklist() {
-        return this.blacklist;
-    }
-
-    @Override
-    public String getWorldName() {
-        return this.worldName;
     }
 
     public boolean isChestProtected(Location block, LocalPlayer player) {
