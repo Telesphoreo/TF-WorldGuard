@@ -34,7 +34,7 @@ buildscript {
 
 allprojects {
     group = 'com.sk89q.worldguard'
-    version = '7.0.1-SNAPSHOT'
+    version = '7.0.0-TF'
 }
 
 if (!project.hasProperty("artifactory_contextUrl")) ext.artifactory_contextUrl = "http://localhost"
@@ -69,7 +69,7 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'java-library'
     apply plugin: 'maven'
-    apply plugin: 'checkstyle'
+    // apply plugin: 'checkstyle'
     apply plugin: 'com.github.johnrengelman.shadow'
     apply plugin: 'com.jfrog.artifactory'
 
@@ -78,8 +78,8 @@ subprojects {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
 
-    checkstyle.configFile = new File(rootProject.projectDir, "config/checkstyle/checkstyle.xml")
-    checkstyle.toolVersion = '7.6.1'
+    // checkstyle.configFile = new File(rootProject.projectDir, "config/checkstyle/checkstyle.xml")
+    // checkstyle.toolVersion = '7.6.1'
 
     repositories {
         mavenLocal()
@@ -113,8 +113,8 @@ subprojects {
         archives javadocJar
     }
 
-    build.dependsOn(checkstyleMain)
-    build.dependsOn(checkstyleTest)
+    // build.dependsOn(checkstyleMain)
+    // build.dependsOn(checkstyleTest)
     build.dependsOn(sourcesJar)
     build.dependsOn(javadocJar)
 
