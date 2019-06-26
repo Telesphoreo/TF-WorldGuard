@@ -17,19 +17,35 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.sk89q.worldguard.bukkit.listener;
+package com.sk89q.worldguard.blacklist.event;
 
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldguard.LocalPlayer;
+import com.sk89q.worldguard.blacklist.target.Target;
 
 import javax.annotation.Nullable;
 
-final class BlockStateAsBlockFunction {
-    private BlockStateAsBlockFunction() {
+public final class ItemEquipBlacklistEvent extends ItemBlacklistEvent {
+
+    /**
+     * Construct the object.
+     *
+     * @param player The player associated with this event
+     * @param position The position the event occurred at
+     * @param target The target of the event
+     */
+    public ItemEquipBlacklistEvent(@Nullable LocalPlayer player, BlockVector3 position, Target target) {
+        super(player, position, target);
     }
 
-    static Block apply(@Nullable BlockState blockState) {
-        return blockState != null ? blockState.getBlock() : null;
+    @Override
+    public String getDescription() {
+        return "equip";
+    }
+
+    @Override
+    public EventType getEventType() {
+        return EventType.EQUIP;
     }
 
 }
