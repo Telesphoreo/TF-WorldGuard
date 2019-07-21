@@ -253,6 +253,14 @@ public class WorldGuardPlugin extends JavaPlugin {
         return true;
     }
 
+    // Compatibility layer for TFPatches
+    public RegionManager getRegionManager(World world)
+    {
+        RegionContainer regionContainer = platform.getRegionContainer();
+        RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world));
+        return regionManager;
+    }
+
     /**
      * This is only here for compatibility purposes.
      * TFPatches has a different way of getting getting protected regions
