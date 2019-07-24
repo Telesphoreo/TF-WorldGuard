@@ -64,6 +64,37 @@ public class WorldGuardHandler {
         return adminProvider.apply(player);
     }
 
+    @SuppressWarnings("unchecked")
+    public static boolean isAdmin(String wePlayer) {
+        final Player player = getPlayer(wePlayer);
+        if (player == null) {
+            return false;
+        }
+
+        if (adminProvider == null) {
+            final Plugin tfm = getTFM();
+            if (tfm == null) {
+                return false;
+            }
+
+            Object provider = null;
+            for (RegisteredServiceProvider<?> serv : Bukkit.getServicesManager().getRegistrations(tfm)) {
+                if (Function.class.isAssignableFrom(serv.getService())) {
+                    provider = serv.getProvider();
+                }
+            }
+
+            if (provider == null) {
+                warning("Could not obtain admin service provider!");
+                return false;
+            }
+
+            adminProvider = (Function<Player, Boolean>) provider;
+        }
+
+        return adminProvider.apply(player);
+    }
+
     public static Player getPlayer(com.sk89q.worldedit.entity.Player wePlayer) {
         final Player player = Bukkit.getPlayer(wePlayer.getUniqueId());
 

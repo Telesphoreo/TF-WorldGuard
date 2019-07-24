@@ -165,7 +165,7 @@ public class RegionPermissionModel extends AbstractPermissionModel {
      * Checks to see if the given sender has permission to modify the given region
      * using the region permission pattern.
      *
-     * @param perm   the name of the node
+     * @param perm the name of the node
      * @param region the region
      */
     private boolean hasPatternPermission(String perm, ProtectedRegion region) {

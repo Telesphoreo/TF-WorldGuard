@@ -53,6 +53,7 @@ import com.sk89q.worldguard.util.profiler.SamplerBuilder.Sampler;
 import com.sk89q.worldguard.util.profiler.ThreadIdFilter;
 import com.sk89q.worldguard.util.profiler.ThreadNameFilter;
 import com.sk89q.worldguard.util.report.ConfigReport;
+import me.totalfreedom.worldguard.WorldGuardHandler;
 
 import java.io.File;
 import java.io.IOException;
@@ -88,6 +89,12 @@ public class WorldGuardCommands {
     @Command(aliases = {"reload"}, desc = "Reload WorldGuard configuration", max = 0)
     @CommandPermissions({"worldguard.reload"})
     public void reload(CommandContext args, Actor sender) throws CommandException {
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
+
         // TODO: This is subject to a race condition, but at least other commands are not being processed concurrently
         List<Task<?>> tasks = WorldGuard.getInstance().getSupervisor().getTasks();
         if (!tasks.isEmpty()) {
@@ -126,6 +133,12 @@ public class WorldGuardCommands {
     @Command(aliases = {"report"}, desc = "Writes a report on WorldGuard", flags = "p", max = 0)
     @CommandPermissions({"worldguard.report"})
     public void report(CommandContext args, final Actor sender) throws CommandException, AuthorizationException {
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
+
         ReportList report = new ReportList("Report");
         worldGuard.getPlatform().addPlatformReports(report);
         report.add(new SystemInfoReport());
@@ -151,6 +164,12 @@ public class WorldGuardCommands {
             flags = "t:i:p")
     @CommandPermissions("worldguard.profile")
     public void profile(final CommandContext args, final Actor sender) throws CommandException, AuthorizationException {
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
+
         Predicate<ThreadInfo> threadFilter;
         String threadName = args.getFlag('t');
         final boolean pastebin;
@@ -249,6 +268,12 @@ public class WorldGuardCommands {
     @Command(aliases = {"stopprofile"}, usage = "",desc = "Stop a running profile", min = 0, max = 0)
     @CommandPermissions("worldguard.profile")
     public void stopProfile(CommandContext args, final Actor sender) throws CommandException {
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
+
         synchronized (this) {
             if (activeSampler == null) {
                 throw new CommandException("No CPU profile is currently running.");
@@ -265,6 +290,12 @@ public class WorldGuardCommands {
             usage = "[player]", desc = "Flush the state manager", max = 1)
     @CommandPermissions("worldguard.flushstates")
     public void flushStates(CommandContext args, Actor sender) throws CommandException {
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
+
         if (args.argsLength() == 0) {
             WorldGuard.getInstance().getPlatform().getSessionManager().resetAllStates();
             sender.print("Cleared all states.");
@@ -280,6 +311,12 @@ public class WorldGuardCommands {
     @Command(aliases = {"running", "queue"}, desc = "List running tasks", max = 0)
     @CommandPermissions("worldguard.running")
     public void listRunningTasks(CommandContext args, Actor sender) throws CommandException {
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
+
         List<Task<?>> tasks = WorldGuard.getInstance().getSupervisor().getTasks();
 
         if (tasks.isEmpty()) {

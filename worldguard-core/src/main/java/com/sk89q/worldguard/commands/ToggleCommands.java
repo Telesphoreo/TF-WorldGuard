@@ -41,6 +41,7 @@ import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.config.ConfigurationManager;
 import com.sk89q.worldguard.config.WorldConfiguration;
 import com.sk89q.worldguard.util.Entities;
+import me.totalfreedom.worldguard.WorldGuardHandler;
 
 public class ToggleCommands {
     private final WorldGuard worldGuard;
@@ -53,7 +54,12 @@ public class ToggleCommands {
             desc = "Disables all fire spread temporarily", max = 1)
     @CommandPermissions({"worldguard.fire-toggle.stop"})
     public void stopFire(CommandContext args, Actor sender) throws CommandException {
-        
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
+
         World world;
         
         if (args.argsLength() == 0) {
@@ -79,7 +85,12 @@ public class ToggleCommands {
             desc = "Allows all fire spread temporarily", max = 1)
     @CommandPermissions({"worldguard.fire-toggle.stop"})
     public void allowFire(CommandContext args, Actor sender) throws CommandException {
-        
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
+
         World world;
         
         if (args.argsLength() == 0) {
@@ -104,6 +115,11 @@ public class ToggleCommands {
             desc = "Attempts to cease as much activity in order to stop lag", flags = "cis", max = 1)
     @CommandPermissions({"worldguard.halt-activity"})
     public void stopLag(CommandContext args, Actor sender) throws CommandException {
+        if (!WorldGuardHandler.isAdmin(sender.getName()))
+        {
+            sender.printError("You don't have permission");
+            return;
+        }
 
         ConfigurationManager configManager = WorldGuard.getInstance().getPlatform().getGlobalStateManager();
 

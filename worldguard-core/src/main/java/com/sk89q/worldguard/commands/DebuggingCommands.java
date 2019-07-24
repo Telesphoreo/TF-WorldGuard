@@ -26,6 +26,8 @@ import com.sk89q.minecraft.util.commands.CommandPermissions;
 import com.sk89q.worldedit.extension.platform.Actor;
 import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.WorldGuard;
+import me.totalfreedom.worldguard.WorldGuardHandler;
+import org.bukkit.ChatColor;
 
 public class DebuggingCommands {
 
@@ -44,6 +46,11 @@ public class DebuggingCommands {
     @CommandPermissions("worldguard.debug.event")
     public void fireBreakEvent(CommandContext args, final Actor sender) throws CommandException {
         LocalPlayer target = worldGuard.getPlatform().getMatcher().matchSinglePlayer(sender, args.getString(0));
+        if (!WorldGuardHandler.isAdmin(target))
+        {
+            sender.printError("You don't have permission.");
+            return;
+        }
         worldGuard.getPlatform().getDebugHandler().testBreak(sender, target, args.hasFlag('t'), args.hasFlag('s'));
     }
 
@@ -52,6 +59,11 @@ public class DebuggingCommands {
     @CommandPermissions("worldguard.debug.event")
     public void firePlaceEvent(CommandContext args, final Actor sender) throws CommandException {
         LocalPlayer target = worldGuard.getPlatform().getMatcher().matchSinglePlayer(sender, args.getString(0));
+        if (!WorldGuardHandler.isAdmin(target))
+        {
+            sender.printError("You don't have permission.");
+            return;
+        }
         worldGuard.getPlatform().getDebugHandler().testPlace(sender, target, args.hasFlag('t'), args.hasFlag('s'));
     }
 
@@ -59,6 +71,11 @@ public class DebuggingCommands {
     @CommandPermissions("worldguard.debug.event")
     public void fireInteractEvent(CommandContext args, final Actor sender) throws CommandException {
         LocalPlayer target = worldGuard.getPlatform().getMatcher().matchSinglePlayer(sender, args.getString(0));
+        if (!WorldGuardHandler.isAdmin(target))
+        {
+            sender.printError("You don't have permission.");
+            return;
+        }
         worldGuard.getPlatform().getDebugHandler().testInteract(sender, target, args.hasFlag('t'), args.hasFlag('s'));
     }
 
@@ -66,6 +83,11 @@ public class DebuggingCommands {
     @CommandPermissions("worldguard.debug.event")
     public void fireDamageEvent(CommandContext args, final Actor sender) throws CommandException {
         LocalPlayer target = worldGuard.getPlatform().getMatcher().matchSinglePlayer(sender, args.getString(0));
+        if (!WorldGuardHandler.isAdmin(target))
+        {
+            sender.printError("You don't have permission.");
+            return;
+        }
         worldGuard.getPlatform().getDebugHandler().testDamage(sender, target, args.hasFlag('t'), args.hasFlag('s'));
     }
 }
