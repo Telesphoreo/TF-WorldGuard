@@ -27,7 +27,6 @@ import com.sk89q.worldedit.extension.platform.Actor;
 import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.WorldGuard;
 import me.totalfreedom.worldguard.WorldGuardHandler;
-import org.bukkit.ChatColor;
 
 public class DebuggingCommands {
 
