@@ -41,21 +41,15 @@ import com.sk89q.worldguard.bukkit.util.InteropUtils;
 import com.sk89q.worldguard.bukkit.util.Materials;
 import com.sk89q.worldguard.commands.CommandUtils;
 import com.sk89q.worldguard.config.WorldConfiguration;
-import com.sk89q.worldguard.domains.Association;
 import com.sk89q.worldguard.internal.permission.RegionPermissionModel;
-import com.sk89q.worldguard.protection.ApplicableRegionSet;
-import com.sk89q.worldguard.protection.DelayedRegionOverlapAssociation;
-import com.sk89q.worldguard.protection.association.Associables;
 import com.sk89q.worldguard.protection.association.RegionAssociable;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.protection.flags.StateFlag.State;
-import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionQuery;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -154,54 +148,6 @@ public class RegionProtectionListener extends AbstractListener {
         }
     }
 
-    private boolean isWhitelistedAtPoint(Cause cause, Location location) {
-        final RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-        ApplicableRegionSet regions = query.getApplicableRegions(BukkitAdapter.adapt(location));
-        Object rootCause = cause.getRootCause();
-        LocalPlayer localPlayer;
-
-        if (rootCause instanceof Player)
-        {
-            localPlayer = WorldGuardPlugin.inst().wrapPlayer((Player) rootCause);
-        }
-        else
-        {
-            return false;
-        }
-
-        RegionPermissionModel permissions = new RegionPermissionModel(localPlayer);
-
-        for (ProtectedRegion region : regions)
-        {
-            if (!permissions.mayIgnoreRegionProtection(region))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private RegionAssociable createRegionAssociable(Cause cause) {
-        Object rootCause = cause.getRootCause();
-
-        if (!cause.isKnown()) {
-            return Associables.constant(Association.NON_MEMBER);
-        } else if (rootCause instanceof Player) {
-            return getPlugin().wrapPlayer((Player) rootCause);
-        } else if (rootCause instanceof OfflinePlayer) {
-            return getPlugin().wrapOfflinePlayer((OfflinePlayer) rootCause);
-        } else if (rootCause instanceof Entity) {
-            RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-            return new DelayedRegionOverlapAssociation(query, BukkitAdapter.adapt(((Entity) rootCause).getLocation()));
-        } else if (rootCause instanceof Block) {
-            RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-            return new DelayedRegionOverlapAssociation(query, BukkitAdapter.adapt(((Block) rootCause).getLocation()));
-        } else {
-            return Associables.constant(Association.NON_MEMBER);
-        }
-    }
-
     @EventHandler(ignoreCancelled = true)
     public void onPlaceBlock(final PlaceBlockEvent event) {
         if (event.getResult() == Result.ALLOW) return; // Don't care about events that have been pre-allowed
@@ -246,7 +192,7 @@ public class RegionProtectionListener extends AbstractListener {
                 what = "place that block";
             }
 
-            if (!canPlace && !isWhitelistedAtPoint(event.getCause(), target)) {
+            if (!canPlace) {
                 tellErrorMessage(event, event.getCause(), target, what);
                 return false;
             }
@@ -281,7 +227,7 @@ public class RegionProtectionListener extends AbstractListener {
                     what = "break that block";
                 }
 
-                if (!canBreak && !isWhitelistedAtPoint(event.getCause(), target)) {
+                if (!canBreak) {
                     tellErrorMessage(event, event.getCause(), target, what);
                     return false;
                 }
@@ -336,7 +282,7 @@ public class RegionProtectionListener extends AbstractListener {
                 what = "use that";
             }
 
-            if (!canUse && !isWhitelistedAtPoint(event.getCause(), target)) {
+            if (!canUse) {
                 tellErrorMessage(event, event.getCause(), target, what);
                 return false;
             }
@@ -390,7 +336,7 @@ public class RegionProtectionListener extends AbstractListener {
             }
         }
 
-        if (!canSpawn && !isWhitelistedAtPoint(event.getCause(), target)) {
+        if (!canSpawn) {
             tellErrorMessage(event, event.getCause(), target, what);
             event.setCancelled(true);
         }
@@ -476,7 +422,7 @@ public class RegionProtectionListener extends AbstractListener {
             what = "use that";
         }
 
-        if (!canUse && !isWhitelistedAtPoint(event.getCause(), target)) {
+        if (!canUse) {
             tellErrorMessage(event, event.getCause(), target, what);
             event.setCancelled(true);
         }
@@ -552,7 +498,7 @@ public class RegionProtectionListener extends AbstractListener {
             what = "hit that";
         }
 
-        if (!canDamage && !isWhitelistedAtPoint(event.getCause(), event.getTarget())) {
+        if (!canDamage) {
             tellErrorMessage(event, event.getCause(), event.getTarget(), what);
             event.setCancelled(true);
         }
