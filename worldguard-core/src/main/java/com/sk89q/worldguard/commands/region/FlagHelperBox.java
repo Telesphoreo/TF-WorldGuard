@@ -38,11 +38,10 @@ import com.sk89q.worldedit.world.World;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.internal.permission.RegionPermissionModel;
 import com.sk89q.worldguard.protection.flags.BooleanFlag;
-import com.sk89q.worldguard.protection.flags.DoubleFlag;
 import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.flags.Flags;
-import com.sk89q.worldguard.protection.flags.IntegerFlag;
 import com.sk89q.worldguard.protection.flags.LocationFlag;
+import com.sk89q.worldguard.protection.flags.NumberFlag;
 import com.sk89q.worldguard.protection.flags.RegistryFlag;
 import com.sk89q.worldguard.protection.flags.SetFlag;
 import com.sk89q.worldguard.protection.flags.StateFlag;
@@ -76,13 +75,15 @@ class FlagHelperBox extends PaginationBox {
             .collect(Collectors.toList());
     private static final int SIZE = FLAGS.size() == Flags.INBUILT_FLAGS.size() ? FLAGS.size() : FLAGS.size() + 1;
     private static final int PAD_PX_SIZE = 180;
+    private static final Set<Flag<?>> DANGER_ZONE = ImmutableSet.of(Flags.BUILD, Flags.PASSTHROUGH, Flags.BLOCK_PLACE, Flags.BLOCK_BREAK);
 
     private final World world;
     private final ProtectedRegion region;
     private final RegionPermissionModel perms;
+    private boolean monoSpace;
 
     FlagHelperBox(World world, ProtectedRegion region, RegionPermissionModel perms) {
-        super("Flags for " + region.getId(), "/rg flags -w " + world.getName() + " -p %page% " + region.getId());
+        super("Flags for " + region.getId(), "/rg flags -w \"" + world.getName() + "\" -p %page% " + region.getId());
         this.world = world;
         this.region = region;
         this.perms = perms;
@@ -114,25 +115,25 @@ class FlagHelperBox extends PaginationBox {
 
     private void appendFlagName(TextComponent.Builder builder, Flag<?> flag, TextColor color) {
         final String name = flag.getName();
-        int length = FlagFontInfo.getPxLength(name);
+        int length = monoSpace ? name.length() : FlagFontInfo.getPxLength(name);
         builder.append(TextComponent.of(name, color));
         if (flag.usesMembershipAsDefault()) {
             builder.append(TextComponent.empty().append(TextComponent.of("*", TextColor.AQUA))
                     .hoverEvent(HoverEvent.of(HoverEvent.Action.SHOW_TEXT,
                             TextComponent.of("This is a special flag which defaults to allow for members, and deny for non-members"))));
-            length += FlagFontInfo.getPxLength('*');
+            length += monoSpace ? 1 : FlagFontInfo.getPxLength('*');
         }
         if (flag == Flags.PASSTHROUGH) {
             builder.append(TextComponent.empty().append(TextComponent.of("*", TextColor.AQUA))
                     .hoverEvent(HoverEvent.of(HoverEvent.Action.SHOW_TEXT,
                             TextComponent.of("This is a special flag which overrides build checks. (Not movement related!)"))));
-            length += FlagFontInfo.getPxLength('*');
+            length += monoSpace ? 1 : FlagFontInfo.getPxLength('*');
         }
-        int leftover = PAD_PX_SIZE - length;
+        int leftover = (monoSpace ? PAD_PX_SIZE / 3 : PAD_PX_SIZE) - length;
         builder.append(TextComponent.space());
         leftover -= 4;
         if (leftover > 0) {
-            builder.append(TextComponent.of(Strings.repeat(".", leftover / 2), TextColor.DARK_GRAY));
+            builder.append(TextComponent.of(Strings.repeat(".", monoSpace ? leftover : leftover / 2), TextColor.DARK_GRAY));
         }
     }
 
@@ -149,10 +150,8 @@ class FlagHelperBox extends PaginationBox {
             appendStringFlagValue(builder, ((StringFlag) flag));
         } else if (flag instanceof LocationFlag) {
             appendLocationFlagValue(builder, ((LocationFlag) flag));
-        } else if (flag instanceof IntegerFlag) {
-            appendNumericFlagValue(builder, (IntegerFlag) flag);
-        } else if (flag instanceof DoubleFlag) {
-            appendNumericFlagValue(builder, (DoubleFlag) flag);
+        } else if (flag instanceof NumberFlag) {
+            appendNumericFlagValue(builder, (NumberFlag<? extends Number>) flag);
         } else {
             String display = String.valueOf(region.getFlag(flag));
             if (display.length() > 23) {
@@ -200,7 +199,13 @@ class FlagHelperBox extends PaginationBox {
             if (maySet) {
                 if (isExplicitSet) {
                     hoverTexts.add(TextComponent.of("Click to unset", TextColor.GOLD));
-                } else if (flag != Flags.BUILD && flag != Flags.PASSTHROUGH) {
+                } else if (DANGER_ZONE.contains(flag)) {
+                    hoverTexts.add(TextComponent.of("Setting this flag may have unintended consequences.", TextColor.RED)
+                            .append(TextComponent.newline())
+                            .append(TextComponent.of("Please read the documentation and set this flag manually if you really intend to.")
+                            .append(TextComponent.newline())
+                            .append(TextComponent.of("(Hint: You do not need to set this to protect the region!)"))));
+                } else {
                     hoverTexts.add(TextComponent.of("Click to set", TextColor.GOLD));
                 }
             }
@@ -221,7 +226,7 @@ class FlagHelperBox extends PaginationBox {
                         HoverEvent.of(HoverEvent.Action.SHOW_TEXT, hoverBuilder.build()));
             }
 
-            if (maySet && (isExplicitSet || flag != Flags.BUILD && flag != Flags.PASSTHROUGH)) {
+            if (maySet && (isExplicitSet || !DANGER_ZONE.contains(flag))) {
                 builder.append(choiceComponent.clickEvent(ClickEvent.of(ClickEvent.Action.RUN_COMMAND,
                         makeCommand(flag, isExplicitSet ? "" : choice))));
             } else {
@@ -296,7 +301,7 @@ class FlagHelperBox extends PaginationBox {
     }
 
     private String makeCommand(Flag<?> flag, Object choice) {
-        return "/rg flag -w " + world.getName() + " -h " + getCurrentPage()
+        return "/rg flag -w \"" + world.getName() + "\" -h " + getCurrentPage()
                 + " " + region.getId() + " " + flag.getName() + " " + choice;
     }
 
@@ -397,13 +402,13 @@ class FlagHelperBox extends PaginationBox {
         }
     }
 
-    private <V extends Number> void appendNumericFlagValue(TextComponent.Builder builder, Flag<V> flag) {
+    private <V extends Number> void appendNumericFlagValue(TextComponent.Builder builder, NumberFlag<V> flag) {
         Number currVal = region.getFlag(flag);
         if (currVal == null) {
             currVal = getInheritedValue(region, flag);
         }
         Number defVal = flag.getDefault();
-        Number[] suggested = getSuggestedNumbers(flag);
+        Number[] suggested = flag.getSuggestedValues();
         SortedSet<Number> choices = new TreeSet<>(Comparator.comparing(Number::doubleValue));
         if (currVal != null) {
             choices.add(currVal);
@@ -416,19 +421,6 @@ class FlagHelperBox extends PaginationBox {
         }
         //noinspection unchecked
         appendValueChoices(builder, flag, (Iterator<V>) choices.iterator(), choices.isEmpty() ? "unset number" : "[custom]");
-    }
-
-    private Number[] getSuggestedNumbers(Flag<? extends Number> flag) {
-        if (flag == Flags.HEAL_AMOUNT || flag == Flags.FEED_AMOUNT) {
-            return new Number[]{0, 5, 10, 20};
-        } else if (flag == Flags.MIN_FOOD || flag == Flags.MIN_HEAL) {
-            return new Number[]{0, 10};
-        } else if (flag == Flags.MAX_FOOD || flag == Flags.MAX_HEAL) {
-            return new Number[]{10, 20};
-        } else if (flag == Flags.HEAL_DELAY || flag == Flags.FEED_DELAY) {
-            return new Number[]{0, 1, 5};
-        }
-        return new Number[0];
     }
 
     private void appendStringFlagValue(TextComponent.Builder builder, StringFlag flag) {
@@ -477,6 +469,10 @@ class FlagHelperBox extends PaginationBox {
         for (Component child : component.children()) {
             appendTextTo(builder, child);
         }
+    }
+
+    void tryMonoSpacing() {
+        this.monoSpace = true;
     }
 
     private static final class FlagFontInfo {
