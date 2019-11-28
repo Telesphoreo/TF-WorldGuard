@@ -26,6 +26,7 @@ import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import me.totalfreedom.worldguard.WorldGuardHandler;
 
 import javax.annotation.Nullable;
 
@@ -43,75 +44,73 @@ public class RegionPermissionModel extends AbstractPermissionModel {
      */
     @Deprecated
     public boolean mayIgnoreRegionProtection(World world) {
-        if (getSender() instanceof LocalPlayer)
-            return WorldGuard.getInstance().getPlatform().getSessionManager().hasBypass((LocalPlayer) getSender(), world);
-        return hasPluginPermission("region.bypass." + world.getName());
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayForceLoadRegions() {
-        return hasPluginPermission("region.load");
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayForceSaveRegions() {
-        return hasPluginPermission("region.save");
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean mayMigrateRegionStore() {
-        return hasPluginPermission("region.migratedb");
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean mayMigrateRegionNames() {
-        return hasPluginPermission("region.migrateuuid");
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayDefine() {
-        return hasPluginPermission("region.define");
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayRedefine(ProtectedRegion region) {
-        return hasPatternPermission("redefine", region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayClaim() {
-        return hasPluginPermission("region.claim");
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayClaimRegionsUnbounded() {
-        return hasPluginPermission("region.unlimited");
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayDelete(ProtectedRegion region) {
-        return hasPatternPermission("remove", region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean maySetPriority(ProtectedRegion region) {
-        return hasPatternPermission("setpriority", region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean maySetParent(ProtectedRegion child, ProtectedRegion parent) {
-        return hasPatternPermission("setparent", child) &&
-                (parent == null ||
-                hasPatternPermission("setparent", parent));
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean maySelect(ProtectedRegion region) {
-        return hasPatternPermission("select", region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayLookup(ProtectedRegion region) {
-        return hasPatternPermission("info", region);
+        return true;
     }
     
     public boolean mayTeleportTo(ProtectedRegion region) {
-        return hasPatternPermission("teleport", region);
+        return true;
     }
 
     public boolean mayOverrideLocationFlagBounds(ProtectedRegion region) {
-        return hasPatternPermission("locationoverride", region);
+        return region.isOwner((LocalPlayer) getSender())
+                || region.isMember((LocalPlayer) getSender())
+                || WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     public boolean mayList() {
-        return hasPluginPermission("region.list");
+        return true;
     }
     
     public boolean mayList(String targetPlayer) {
@@ -120,20 +119,18 @@ public class RegionPermissionModel extends AbstractPermissionModel {
         }
         
         if (targetPlayer.equalsIgnoreCase(getSender().getName())) {
-            return hasPluginPermission("region.list.own");
+            return true;
         } else {
             return mayList();
         }
     }
     
     public boolean maySetFlag(ProtectedRegion region) {
-        return hasPatternPermission("flag.regions", region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean maySetFlag(ProtectedRegion region, Flag<?> flag) {
-        // This is a WTF permission
-        return hasPatternPermission(
-                "flag.flags." + flag.getName().toLowerCase(), region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean maySetFlag(ProtectedRegion region, Flag<?> flag, @Nullable String value) {
@@ -147,26 +144,23 @@ public class RegionPermissionModel extends AbstractPermissionModel {
         } else {
             sanitizedValue = "unset";
         }
-
-        // This is a WTF permission
-        return hasPatternPermission(
-                "flag.flags." + flag.getName().toLowerCase() + "." + sanitizedValue, region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean mayAddMembers(ProtectedRegion region) {
-        return hasPatternPermission("addmember", region);
+        return region.isOwner((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean mayAddOwners(ProtectedRegion region) {
-        return hasPatternPermission("addowner", region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean mayRemoveMembers(ProtectedRegion region) {
-        return hasPatternPermission("removemember", region);
+        return region.isOwner((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender());
     }
 
     public boolean mayRemoveOwners(ProtectedRegion region) {
-        return hasPatternPermission("removeowner", region);
+        return WorldGuardHandler.isAdmin((Player) getSender());
     }
     
     /**
@@ -193,7 +187,7 @@ public class RegionPermissionModel extends AbstractPermissionModel {
             effectivePerm = "region." + perm + "." + idLower;
         }
 
-        return hasPluginPermission(effectivePerm);
+        return region.isOwner((LocalPlayer) getSender()) || region.isMember((LocalPlayer) getSender()) || WorldGuardHandler.isAdmin((Player) getSender());
     }
 
 }

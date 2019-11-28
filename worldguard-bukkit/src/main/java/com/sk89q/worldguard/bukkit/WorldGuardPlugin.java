@@ -74,6 +74,7 @@ import com.sk89q.worldguard.protection.managers.storage.file.DirectoryYamlDriver
 import com.sk89q.worldguard.protection.managers.storage.sql.SQLDriver;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.util.logging.RecordMessagePrefixer;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -265,6 +266,19 @@ public class WorldGuardPlugin extends JavaPlugin {
     public void onDisable() {
         WorldGuard.getInstance().disable();
         this.getServer().getScheduler().cancelTasks(this);
+    }
+
+    /**
+     * This is only here for compatibility purposes.
+     * TFPatches has a different way of getting getting protected regions
+     * in a world, therefore this is required.
+     * @param world
+     * @return
+     */
+    public RegionManager getRegionManager(World world) {
+        RegionContainer regionContainer = platform.getRegionContainer();
+        RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world));
+        return regionManager;
     }
 
     @Override
