@@ -254,7 +254,7 @@ class RegionCommandsBase {
      * @param world the world
      * @throws CommandException thrown if the manager is null
      */
-    protected static RegionManager checkRegionManager(com.sk89q.worldedit.world.World world) throws CommandException {
+    protected static RegionManager checkRegionManager(World world) throws CommandException {
         if (!WorldGuard.getInstance().getPlatform().getGlobalStateManager().get(world).useRegions) {
             throw new CommandException("Region support is disabled in the target world. " +
                     "It can be enabled per-world in WorldGuard's configuration files. " +
@@ -334,7 +334,7 @@ class RegionCommandsBase {
      * @param region the region
      */
     protected static void informNewUser(Actor sender, RegionManager manager, ProtectedRegion region) {
-        if (manager.getRegions().size() <= 2) {
+        if (manager.size() <= 2) {
             sender.print(SubtleFormat.wrap("(This region is NOW PROTECTED from modification from others. Don't want that? Use ")
                             .append(TextComponent.of("/rg flag " + region.getId() + " passthrough allow", TextColor.AQUA))
                             .append(TextComponent.of(")", TextColor.GRAY)));
@@ -392,8 +392,10 @@ class RegionCommandsBase {
      * @param value the value
      * @throws InvalidFlagFormat thrown if the value is invalid
      */
-    protected static <V> void setFlag(ProtectedRegion region, Flag<V> flag, Actor sender, String value) throws InvalidFlagFormat {
-        region.setFlag(flag, flag.parseInput(FlagContext.create().setSender(sender).setInput(value).setObject("region", region).build()));
+    protected static <V> V setFlag(ProtectedRegion region, Flag<V> flag, Actor sender, String value) throws InvalidFlagFormat {
+        V val = flag.parseInput(FlagContext.create().setSender(sender).setInput(value).setObject("region", region).build());
+        region.setFlag(flag, val);
+        return val;
     }
 
 }

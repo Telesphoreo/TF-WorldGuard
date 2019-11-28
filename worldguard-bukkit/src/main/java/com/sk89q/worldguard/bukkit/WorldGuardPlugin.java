@@ -20,6 +20,7 @@
 package com.sk89q.worldguard.bukkit;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Streams;
 import com.sk89q.bukkit.util.CommandsManagerRegistration;
 import com.sk89q.minecraft.util.commands.CommandException;
 import com.sk89q.minecraft.util.commands.CommandPermissionsException;
@@ -35,6 +36,7 @@ import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import com.sk89q.worldedit.extension.platform.Actor;
 import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.blacklist.Blacklist;
 import com.sk89q.worldguard.bukkit.event.player.ProcessPlayerEvent;
 import com.sk89q.worldguard.bukkit.listener.BlacklistListener;
 import com.sk89q.worldguard.bukkit.listener.BlockedPotionsListener;
@@ -64,11 +66,14 @@ import com.sk89q.worldguard.commands.GeneralCommands;
 import com.sk89q.worldguard.commands.ProtectionCommands;
 import com.sk89q.worldguard.commands.ToggleCommands;
 import com.sk89q.worldguard.protection.flags.Flag;
+import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.registry.SimpleFlagRegistry;
 import com.sk89q.worldguard.protection.managers.RegionManager;
+import com.sk89q.worldguard.protection.managers.storage.RegionDriver;
+import com.sk89q.worldguard.protection.managers.storage.file.DirectoryYamlDriver;
+import com.sk89q.worldguard.protection.managers.storage.sql.SQLDriver;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.util.logging.RecordMessagePrefixer;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -86,6 +91,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -207,7 +214,51 @@ public class WorldGuardPlugin extends JavaPlugin {
         ((SimpleFlagRegistry) WorldGuard.getInstance().getFlagRegistry()).setInitialized(true);
 
         // Enable metrics
-        new Metrics(this);
+        final Metrics metrics = new Metrics(this);
+        if (metrics.isEnabled() && platform.getGlobalStateManager().extraStats) {
+            setupCustomCharts(metrics);
+        }
+    }
+
+    private void setupCustomCharts(Metrics metrics) {
+        metrics.addCustomChart(new Metrics.SingleLineChart("region_count", () ->
+                platform.getRegionContainer().getLoaded().stream().mapToInt(RegionManager::size).sum()));
+        metrics.addCustomChart(new Metrics.SimplePie("region_driver", () -> {
+            RegionDriver driver = platform.getGlobalStateManager().selectedRegionStoreDriver;
+            return driver instanceof DirectoryYamlDriver ? "yaml" : driver instanceof SQLDriver ? "sql" : "unknown";
+        }));
+        metrics.addCustomChart(new Metrics.DrilldownPie("blacklist", () -> {
+            int empty = 0;
+            Map<String, Integer> blacklistMap = new HashMap<>();
+            Map<String, Integer> whitelistMap = new HashMap<>();
+            for (BukkitWorldConfiguration worldConfig : platform.getGlobalStateManager().getWorldConfigs()) {
+                Blacklist blacklist = worldConfig.getBlacklist();
+                if (blacklist != null && !blacklist.isEmpty()) {
+                    Map<String, Integer> target = blacklist.isWhitelist() ? whitelistMap : blacklistMap;
+                    int floor = ((blacklist.getItemCount() - 1) / 10) * 10;
+                    String range = floor >= 100 ? "101+" : (floor + 1) + " - " + (floor + 10);
+                    target.merge(range, 1, Integer::sum);
+                } else {
+                    empty++;
+                }
+            }
+            Map<String, Map<String, Integer>> blacklistCounts = new HashMap<>();
+            Map<String, Integer> emptyMap = new HashMap<>();
+            emptyMap.put("empty", empty);
+            blacklistCounts.put("empty", emptyMap);
+            blacklistCounts.put("blacklist", blacklistMap);
+            blacklistCounts.put("whitelist", whitelistMap);
+            return blacklistCounts;
+        }));
+        metrics.addCustomChart(new Metrics.SimplePie("chest_protection", () ->
+                "" + platform.getGlobalStateManager().getWorldConfigs().stream().anyMatch(cfg -> cfg.signChestProtection)));
+        metrics.addCustomChart(new Metrics.SimplePie("build_permissions", () ->
+                "" + platform.getGlobalStateManager().getWorldConfigs().stream().anyMatch(cfg -> cfg.buildPermissions)));
+
+        metrics.addCustomChart(new Metrics.SimplePie("custom_flags", () ->
+                "" + (WorldGuard.getInstance().getFlagRegistry().size() > Flags.INBUILT_FLAGS.size())));
+        metrics.addCustomChart(new Metrics.SimplePie("custom_handlers", () ->
+                "" + (WorldGuard.getInstance().getPlatform().getSessionManager().customHandlersRegistered())));
     }
 
     @Override
@@ -251,19 +302,6 @@ public class WorldGuardPlugin extends JavaPlugin {
         }
 
         return true;
-    }
-
-    /**
-     * This is only here for compatibility purposes.
-     * TFPatches has a different way of getting getting protected regions
-     * in a world, therefore this is required.
-     * @param world
-     * @return
-     */
-    public RegionManager getRegionManager(World world) {
-        RegionContainer regionContainer = platform.getRegionContainer();
-        RegionManager regionManager = regionContainer.get(BukkitAdapter.adapt(world));
-        return regionManager;
     }
 
     /**

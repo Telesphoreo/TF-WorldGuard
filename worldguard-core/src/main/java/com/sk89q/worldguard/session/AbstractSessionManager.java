@@ -68,6 +68,7 @@ public abstract class AbstractSessionManager implements SessionManager {
             .build(CacheLoader.from(key ->
                     createSession(key.playerRef.get())));
 
+    private boolean hasCustom = false;
     private List<Handler.Factory<? extends Handler>> handlers = new LinkedList<>();
 
     private static final List<Handler.Factory<? extends Handler>> defaultHandlers = new LinkedList<>();
@@ -96,12 +97,17 @@ public abstract class AbstractSessionManager implements SessionManager {
         handlers.addAll(defaultHandlers);
     }
 
+    @Override
+    public boolean customHandlersRegistered() {
+        return hasCustom;
+    }
 
     @Override
     public boolean registerHandler(Handler.Factory<? extends Handler> factory, @Nullable Handler.Factory<? extends Handler> after) {
         if (factory == null) return false;
         WorldGuard.logger.log(Level.INFO, "Registering session handler "
                 + factory.getClass().getEnclosingClass().getName());
+        hasCustom = true;
         if (after == null) {
             handlers.add(factory);
         } else {
@@ -127,7 +133,9 @@ public abstract class AbstractSessionManager implements SessionManager {
 
     @Override
     public boolean hasBypass(LocalPlayer player, World world) {
-        return bypassCache.getUnchecked(new WorldPlayerTuple(world, player));
+        Session sess = getIfPresent(player);
+        return sess != null && !sess.hasBypassDisabled()
+                && bypassCache.getUnchecked(new WorldPlayerTuple(world, player));
     }
 
     @Override

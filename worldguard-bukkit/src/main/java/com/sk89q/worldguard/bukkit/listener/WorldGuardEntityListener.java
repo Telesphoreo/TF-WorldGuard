@@ -282,13 +282,6 @@ public class WorldGuardEntityListener implements Listener {
                             event.setCancelled(true);
                             return;
                         }
-
-                        if (attacker instanceof Creeper) {
-                            if (!set.testState(localPlayer, Flags.CREEPER_EXPLOSION) && wcfg.explosionFlagCancellation) {
-                                event.setCancelled(true);
-                                return;
-                            }
-                        }
                     }
                 }
             }
@@ -689,9 +682,9 @@ public class WorldGuardEntityListener implements Listener {
             LocalPlayer associable = null;
             if (event.getEntity() instanceof Player) {
                 associable = plugin.wrapPlayer(((Player) event.getEntity()));
-            }
-            if (WorldGuard.getInstance().getPlatform().getSessionManager().hasBypass(associable, world)) {
-                return;
+                if (WorldGuard.getInstance().getPlatform().getSessionManager().hasBypass(associable, world)) {
+                    return;
+                }
             }
             BlockVector3 min = null;
             BlockVector3 max = null;

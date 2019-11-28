@@ -944,7 +944,8 @@ public final class Materials {
      */
     public static boolean isPistonBlock(Material material) {
         return material == Material.PISTON
-                || material == Material.STICKY_PISTON;
+                || material == Material.STICKY_PISTON
+                || material == Material.MOVING_PISTON;
     }
 
     /**
@@ -1198,7 +1199,11 @@ public final class Materials {
                 || type == Material.MELON_STEM
                 || type == Material.PUMPKIN_STEM
                 || type == Material.PUMPKIN
-                || type == Material.MELON;
+                || type == Material.MELON
+                || type == Material.CACTUS
+                || type == Material.SUGAR_CANE
+                || type == Material.BAMBOO
+                || type == Material.BAMBOO_SAPLING;
     }
 
     /**

@@ -25,6 +25,7 @@ import com.google.common.collect.Sets;
 import com.sk89q.minecraft.util.commands.Command;
 import com.sk89q.minecraft.util.commands.CommandContext;
 import com.sk89q.minecraft.util.commands.CommandException;
+import com.sk89q.minecraft.util.commands.CommandPermissions;
 import com.sk89q.minecraft.util.commands.CommandPermissionsException;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.command.util.AsyncCommandBuilder;
@@ -73,6 +74,7 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion.CircularInheritanceException;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.protection.util.DomainInputResolver.UserLocatorPolicy;
+import com.sk89q.worldguard.session.Session;
 import com.sk89q.worldguard.util.Enums;
 import com.sk89q.worldguard.util.logging.LoggerToChatHandler;
 
@@ -152,8 +154,6 @@ public final class RegionCommands extends RegionCommandsBase {
             region = new GlobalProtectedRegion(id);
         } else {
             region = checkRegionFromSelection(player, id);
-            warnAboutDimensions(player, region);
-            informNewUser(player, manager, region);
         }
 
         RegionAdder task = new RegionAdder(manager, region);
@@ -162,8 +162,13 @@ public final class RegionCommands extends RegionCommandsBase {
         final String description = String.format("Adding region '%s'", region.getId());
         AsyncCommandBuilder.wrap(task, sender)
                 .registerWithSupervisor(worldGuard.getSupervisor(), description)
-                .onSuccess(String.format("A new region has been made named '%s'.", region.getId()), null)
-                .onFailure("Failed to add the region '%s'", worldGuard.getExceptionConverter())
+                .onSuccess((Component) null,
+                        t -> {
+                            sender.print(String.format("A new region has been made named '%s'.", region.getId()));
+                            warnAboutDimensions(sender, region);
+                            informNewUser(sender, manager, region);
+                        })
+                .onFailure(String.format("Failed to add the region '%s'", region.getId()), worldGuard.getExceptionConverter())
                 .buildAndExec(worldGuard.getExecutorService());
     }
 
@@ -201,8 +206,6 @@ public final class RegionCommands extends RegionCommandsBase {
             region = new GlobalProtectedRegion(id);
         } else {
             region = checkRegionFromSelection(player, id);
-            warnAboutDimensions(player, region);
-            informNewUser(player, manager, region);
         }
 
         region.copyFrom(existing);
@@ -213,7 +216,12 @@ public final class RegionCommands extends RegionCommandsBase {
         AsyncCommandBuilder.wrap(task, sender)
                 .registerWithSupervisor(worldGuard.getSupervisor(), description)
                 .sendMessageAfterDelay("(Please wait... " + description + ")")
-                .onSuccess(String.format("Region '%s' has been updated with a new area.", region.getId()), null)
+                .onSuccess((Component) null,
+                        t -> {
+                            player.print(String.format("Region '%s' has been updated with a new area.", region.getId()));
+                            warnAboutDimensions(player, region);
+                            informNewUser(player, manager, region);
+                        })
                 .onFailure(String.format("Failed to update the region '%s'", region.getId()), worldGuard.getExceptionConverter())
                 .buildAndExec(worldGuard.getExecutorService());
     }
@@ -494,11 +502,6 @@ public final class RegionCommands extends RegionCommandsBase {
             value = "";
         }
 
-        // Add color codes
-        if (value != null) {
-            value = CommandUtils.replaceColorMacros(value);
-        }
-
         // Lookup the existing region
         RegionManager manager = checkRegionManager(world);
         ProtectedRegion existing = checkExistingRegion(manager, args.getString(0), true);
@@ -566,7 +569,7 @@ public final class RegionCommands extends RegionCommandsBase {
         if (value != null) {
             // Set the flag if [value] was given even if [-g group] was given as well
             try {
-                setFlag(existing, foundFlag, sender, value);
+                value = setFlag(existing, foundFlag, sender, value).toString();
             } catch (InvalidFlagFormat e) {
                 throw new CommandException(e.getMessage());
             }
@@ -745,7 +748,7 @@ public final class RegionCommands extends RegionCommandsBase {
 
         // Tell the user the current inheritance
         RegionPrintoutBuilder printout = new RegionPrintoutBuilder(world.getName(), child, null, sender);
-        printout.append(LabelFormat.wrap("Inheritance set for region '", child.getId(), "'."));
+        printout.append(TextComponent.of("Inheritance set for region '" + child.getId() + "'.", TextColor.LIGHT_PURPLE));
         if (parent != null) {
             printout.newline();
             printout.append(SubtleFormat.wrap("(Current inheritance:")).newline();
@@ -1091,8 +1094,24 @@ public final class RegionCommands extends RegionCommandsBase {
             }
         }
 
-        player.setLocation(teleportLocation);
-        sender.print("Teleported you to the region '" + existing.getId() + "'.");
+        player.teleport(teleportLocation,
+                "Teleported you to the region '" + existing.getId() + "'.",
+                "Unable to teleport to region '" + existing.getId() + "'.");
+    }
+
+    @Command(aliases = {"toggle-bypass", "bypass"},
+             desc = "Toggle region bypassing, effectively ignoring bypass permissions.")
+    @CommandPermissions({"worldguard.region.toggle-bypass"})
+    public void toggleBypass(CommandContext args, Actor sender) throws CommandException {
+        LocalPlayer player = worldGuard.checkPlayer(sender);
+        Session session = WorldGuard.getInstance().getPlatform().getSessionManager().get(player);
+        if (session.hasBypassDisabled()) {
+            session.setBypassDisabled(false);
+            player.print("You are now bypassing region protection (as long as you have permission).");
+        } else {
+            session.setBypassDisabled(true);
+            player.print("You are no longer bypassing region protection.");
+        }
     }
 
     private static class FlagListBuilder implements Callable<Component> {
