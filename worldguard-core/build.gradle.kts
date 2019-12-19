@@ -15,7 +15,7 @@ repositories {
 
 dependencies {
     "compile"(project(":worldguard-libs:core"))
-    "compile"("com.sk89q.worldedit:worldedit-core:7.0.1-SNAPSHOT")
+    "compile"("com.sk89q.worldedit:worldedit-core:${Versions.WORLDEDIT}")
     "implementation"("org.flywaydb:flyway-core:3.0")
     "compile"("org.bukkit:bukkit:1.14.4-R0.1-SNAPSHOT")
 

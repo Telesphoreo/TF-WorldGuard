@@ -24,9 +24,9 @@ repositories {
 dependencies {
     "compile"(project(":worldguard-core"))
     //"compile"(project(":worldguard-libs:bukkit"))
-    "api"("com.destroystokyo.paper:paper-api:1.14.4-R0.1-SNAPSHOT")
+    "api"("com.destroystokyo.paper:paper-api:1.15-R0.1-SNAPSHOT")
     "implementation"("io.papermc:paperlib:1.0.2")
-    "api"("com.sk89q.worldedit:worldedit-bukkit:7.0.1-SNAPSHOT") { isTransitive = false }
+    "api"("com.sk89q.worldedit:worldedit-bukkit:${Versions.WORLDEDIT}") { isTransitive = false }
     "implementation"("com.sk89q:commandbook:2.3") { isTransitive = false }
     "implementation"("org.bstats:bstats-bukkit:1.5")
 }
