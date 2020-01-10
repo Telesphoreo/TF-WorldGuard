@@ -357,7 +357,8 @@ public class EventAbstractionListener extends AbstractListener {
             for (int i = 0; i < blocks.size(); i++) {
                 Block existing = blocks.get(i);
                 if (existing.getPistonMoveReaction() == PistonMoveReaction.MOVE
-                    || existing.getPistonMoveReaction() == PistonMoveReaction.PUSH_ONLY) {
+                    || existing.getPistonMoveReaction() == PistonMoveReaction.PUSH_ONLY
+                    || existing.getType() == Material.PISTON || existing.getType() == Material.STICKY_PISTON) {
                     blocks.set(i, existing.getRelative(dir));
                 }
             }
@@ -1065,6 +1066,13 @@ public class EventAbstractionListener extends AbstractListener {
         // Handle created spawn eggs
         if (item != null && Materials.isSpawnEgg(item.getType())) {
             Events.fireToCancel(event, new SpawnEntityEvent(event, cause, placed.getLocation().add(0.5, 0, 0.5), Materials.getEntitySpawnEgg(item.getType())));
+            return;
+        }
+
+        // handle water/lava placement
+        if (item != null && (item.getType() == Material.WATER_BUCKET || item.getType() == Material.LAVA_BUCKET)) {
+            Events.fireToCancel(event, new PlaceBlockEvent(event, cause, placed.getLocation(),
+                    item.getType() == Material.WATER_BUCKET ? Material.WATER : Material.LAVA));
             return;
         }
     }
