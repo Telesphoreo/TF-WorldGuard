@@ -19,6 +19,10 @@ repositories {
         name = "bstats"
         url = uri("https://repo.codemc.org/repository/maven-public")
     }
+    maven {
+        name = "spigot"
+        url = uri("https://hub.spigotmc.org/nexus/content/groups/public")
+    }
 }
 
 dependencies {
