@@ -95,6 +95,7 @@ import org.bukkit.event.block.BlockMultiPlaceEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.CauldronLevelChangeEvent;
 import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
@@ -345,6 +346,7 @@ public class EventAbstractionListener extends AbstractListener {
                 Events.fireBulkEventToCancel(event, new BreakBlockEvent(event, cause, event.getBlock().getWorld(), blocks, Material.AIR));
                 if (originalSize != blocks.size()) {
                     event.setCancelled(true);
+                    return;
                 }
                 for (Block b : blocks) {
                     Location loc = b.getRelative(direction).getLocation();
@@ -364,8 +366,14 @@ public class EventAbstractionListener extends AbstractListener {
     public void onBlockPistonExtend(BlockPistonExtendEvent event) {
         EventDebounce.Entry entry = pistonExtendDebounce.getIfNotPresent(new BlockPistonExtendKey(event), event);
         if (entry != null) {
+            Cause cause = create(event.getBlock());
             List<Block> blocks = new ArrayList<>(event.getBlocks());
             int originalLength = blocks.size();
+            Events.fireBulkEventToCancel(event, new BreakBlockEvent(event, cause, event.getBlock().getWorld(), blocks, Material.AIR));
+            if (originalLength != blocks.size()) {
+                event.setCancelled(true);
+                return;
+            }
             BlockFace dir = event.getDirection();
             for (int i = 0; i < blocks.size(); i++) {
                 Block existing = blocks.get(i);
@@ -375,7 +383,7 @@ public class EventAbstractionListener extends AbstractListener {
                     blocks.set(i, existing.getRelative(dir));
                 }
             }
-            Events.fireBulkEventToCancel(event, new PlaceBlockEvent(event, create(event.getBlock()), event.getBlock().getWorld(), blocks, Material.STONE));
+            Events.fireBulkEventToCancel(event, new PlaceBlockEvent(event, cause, event.getBlock().getWorld(), blocks, Material.STONE));
             if (blocks.size() != originalLength) {
                 event.setCancelled(true);
             }
@@ -1039,6 +1047,14 @@ public class EventAbstractionListener extends AbstractListener {
         final UseBlockEvent useEvent = new UseBlockEvent(event, create(event.getPlayer()), event.getLectern().getBlock());
         useEvent.getRelevantFlags().add(Flags.CHEST_ACCESS);
         Events.fireToCancel(event, useEvent);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onCauldronLevelChange(CauldronLevelChangeEvent event) {
+        if (event.getEntity() == null) return;
+        interactDebounce.debounce(event.getBlock(), event.getEntity(), event,
+                new UseBlockEvent(event, create(event.getEntity()),
+                        event.getBlock()).setAllowed(hasInteractBypass(event.getBlock())));
     }
 
     /**

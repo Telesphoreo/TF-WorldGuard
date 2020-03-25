@@ -129,22 +129,21 @@ public final class RegionCommands extends RegionCommandsBase {
      * @throws CommandException any error
      */
     @Command(aliases = {"define", "def", "d", "create"},
-             usage = "<id> [<owner1> [<owner2> [<owners...>]]]",
-             flags = "ng",
+             usage = "[-w <world>] <id> [<owner1> [<owner2> [<owners...>]]]",
+             flags = "ngw:",
              desc = "Defines a region",
              min = 1)
     public void define(CommandContext args, Actor sender) throws CommandException {
         warnAboutSaveFailures(sender);
-        LocalPlayer player = worldGuard.checkPlayer(sender);
 
         // Check permissions
-        if (!getPermissionModel(player).mayDefine()) {
+        if (!getPermissionModel(sender).mayDefine()) {
             throw new CommandPermissionsException();
         }
 
         String id = checkRegionId(args.getString(0), false);
 
-        World world = player.getWorld();
+        World world = checkWorld(args, sender, 'w');
         RegionManager manager = checkRegionManager(world);
 
         checkRegionDoesNotExist(manager, id, true);
@@ -154,7 +153,7 @@ public final class RegionCommands extends RegionCommandsBase {
         if (args.hasFlag('g')) {
             region = new GlobalProtectedRegion(id);
         } else {
-            region = checkRegionFromSelection(player, id);
+            region = checkRegionFromSelection(sender, id);
         }
 
         RegionAdder task = new RegionAdder(manager, region);
@@ -182,24 +181,22 @@ public final class RegionCommands extends RegionCommandsBase {
      * @throws CommandException any error
      */
     @Command(aliases = {"redefine", "update", "move"},
-             usage = "<id>",
+             usage = "[-w <world>] <id>",
              desc = "Re-defines the shape of a region",
-             flags = "g",
+             flags = "gw:",
              min = 1, max = 1)
     public void redefine(CommandContext args, Actor sender) throws CommandException {
         warnAboutSaveFailures(sender);
 
-        LocalPlayer player = worldGuard.checkPlayer(sender);
-
         String id = checkRegionId(args.getString(0), false);
 
-        World world = player.getWorld();
+        World world = checkWorld(args, sender, 'w');
         RegionManager manager = checkRegionManager(world);
 
         ProtectedRegion existing = checkExistingRegion(manager, id, false);
 
         // Check permissions
-        if (!getPermissionModel(player).mayRedefine(existing)) {
+        if (!getPermissionModel(sender).mayRedefine(existing)) {
             throw new CommandPermissionsException();
         }
 
@@ -208,7 +205,7 @@ public final class RegionCommands extends RegionCommandsBase {
         if (args.hasFlag('g')) {
             region = new GlobalProtectedRegion(id);
         } else {
-            region = checkRegionFromSelection(player, id);
+            region = checkRegionFromSelection(sender, id);
         }
 
         region.copyFrom(existing);
@@ -221,9 +218,9 @@ public final class RegionCommands extends RegionCommandsBase {
                 .sendMessageAfterDelay("(Please wait... " + description + ")")
                 .onSuccess((Component) null,
                         t -> {
-                            player.print(String.format("Region '%s' has been updated with a new area.", region.getId()));
-                            warnAboutDimensions(player, region);
-                            informNewUser(player, manager, region);
+                            sender.print(String.format("Region '%s' has been updated with a new area.", region.getId()));
+                            warnAboutDimensions(sender, region);
+                            informNewUser(sender, manager, region);
                             checkSpawnOverlap(sender, world, region);
                         })
                 .onFailure(String.format("Failed to update the region '%s'", region.getId()), worldGuard.getExceptionConverter())
@@ -338,28 +335,34 @@ public final class RegionCommands extends RegionCommandsBase {
      * @throws CommandException any error
      */
     @Command(aliases = {"select", "sel", "s"},
-             usage = "[id]",
+             usage = "[-w <world>] [id]",
              desc = "Load a region as a WorldEdit selection",
-             min = 0, max = 1)
+             min = 0, max = 1,
+             flags = "w:")
     public void select(CommandContext args, Actor sender) throws CommandException {
-        LocalPlayer player = worldGuard.checkPlayer(sender);
-        RegionManager manager = checkRegionManager(player.getWorld());
+        World world = checkWorld(args, sender, 'w');
+        RegionManager manager = checkRegionManager(world);
         ProtectedRegion existing;
 
         // If no arguments were given, get the region that the player is inside
         if (args.argsLength() == 0) {
-            existing = checkRegionStandingIn(manager, player, "/rg select %id%");
+            LocalPlayer player = worldGuard.checkPlayer(sender);
+            if (!player.getWorld().equals(world)) { // confusing to get current location regions in another world
+                throw new CommandException("Please specify a region name."); // just don't allow that
+            }
+            world = player.getWorld();
+            existing = checkRegionStandingIn(manager, player, "/rg select -w \"" + world.getName() + "\" %id%");
         } else {
             existing = checkExistingRegion(manager, args.getString(0), false);
         }
 
         // Check permissions
-        if (!getPermissionModel(player).maySelect(existing)) {
+        if (!getPermissionModel(sender).maySelect(existing)) {
             throw new CommandPermissionsException();
         }
 
         // Select
-        setPlayerSelection(player, existing);
+        setPlayerSelection(sender, existing, world);
     }
 
     /**
@@ -407,7 +410,7 @@ public final class RegionCommands extends RegionCommandsBase {
                 throw new CommandPermissionsException();
             }
 
-            setPlayerSelection(worldGuard.checkPlayer(sender), existing);
+            setPlayerSelection(worldGuard.checkPlayer(sender), existing, world);
         }
 
         // Print region information
@@ -417,7 +420,10 @@ public final class RegionCommands extends RegionCommandsBase {
         AsyncCommandBuilder.wrap(printout, sender)
                 .registerWithSupervisor(WorldGuard.getInstance().getSupervisor(), "Fetching region info")
                 .sendMessageAfterDelay("(Please wait... fetching region information...)")
-                .onSuccess((Component) null, sender::print)
+                .onSuccess((Component) null, component -> {
+                    sender.print(component);
+                    checkSpawnOverlap(sender, world, existing);
+                })
                 .onFailure("Failed to fetch region information", WorldGuard.getInstance().getExceptionConverter())
                 .buildAndExec(WorldGuard.getInstance().getExecutorService());
     }
@@ -622,6 +628,7 @@ public final class RegionCommands extends RegionCommandsBase {
             printout.appendFlagsList(false);
             printout.append(SubtleFormat.wrap(")"));
             printout.send(sender);
+            checkSpawnOverlap(sender, world, existing);
         }
     }
 
@@ -662,7 +669,12 @@ public final class RegionCommands extends RegionCommandsBase {
         if (!sender.isPlayer()) {
             flagHelperBox.tryMonoSpacing();
         }
-        AsyncCommandBuilder.wrap(() -> flagHelperBox.create(page), sender)
+        AsyncCommandBuilder.wrap(() -> {
+                    if (checkSpawnOverlap(sender, world, region)) {
+                        flagHelperBox.setComponentsPerPage(15);
+                    }
+                    return flagHelperBox.create(page);
+                }, sender)
                 .onSuccess((Component) null, sender::print)
                 .onFailure("Failed to get region flags", WorldGuard.getInstance().getExceptionConverter())
                 .buildAndExec(WorldGuard.getInstance().getExecutorService());
@@ -698,6 +710,7 @@ public final class RegionCommands extends RegionCommandsBase {
         existing.setPriority(priority);
 
         sender.print("Priority of '" + existing.getId() + "' set to " + priority + " (higher numbers override).");
+        checkSpawnOverlap(sender, world, existing);
     }
 
     /**
